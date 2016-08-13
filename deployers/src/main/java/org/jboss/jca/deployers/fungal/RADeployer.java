@@ -42,6 +42,7 @@ import org.jboss.jca.deployers.common.CommonDeployment;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.net.URISyntaxException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -63,7 +64,7 @@ import com.github.fungal.spi.deployers.Deployer;
  * @author <a href="mailto:jeff.zhang@ironjacamar.org">Jeff Zhang</a>
  * @author <a href="mailto:stefano.maestri@javalinux.it">Stefano Maestri</a>
  */
-public final class RADeployer extends AbstractFungalRADeployer implements Deployer
+public class RADeployer extends AbstractFungalRADeployer implements Deployer
 {
    /** The logger */
    private static DeployersLogger log = Logger.getMessageLogger(DeployersLogger.class, RADeployer.class.getName());
@@ -89,7 +90,7 @@ public final class RADeployer extends AbstractFungalRADeployer implements Deploy
     */
    public boolean accepts(URL url)
    {
-      if (url == null || !(url.toExternalForm().endsWith(".rar") || url.toExternalForm().endsWith(".rar/")))
+      if (url == null || url.toExternalForm().startsWith("jar") || !(url.toExternalForm().endsWith(".rar") || url.toExternalForm().endsWith(".rar/")))
          return false;
 
       return true;
@@ -116,7 +117,7 @@ public final class RADeployer extends AbstractFungalRADeployer implements Deploy
       ClassLoader oldTCCL = SecurityActions.getThreadContextClassLoader();
       try
       {
-         File f = new File(url.toURI());
+         File f = getFileFromUrl(url);
 
          if (!f.exists())
             throw new IOException("Archive " + url.toExternalForm() + " doesnt exists");
@@ -127,7 +128,7 @@ public final class RADeployer extends AbstractFungalRADeployer implements Deploy
          if (f.isFile())
          {
             FileUtil fileUtil = new FileUtil();
-            destination = new File(SecurityActions.getSystemProperty("iron.jacamar.home"), "/tmp/");
+            destination = new File(getIronJacamarHome(), "/tmp/");
             root = fileUtil.extract(f, destination);
          }
          else
@@ -212,8 +213,33 @@ public final class RADeployer extends AbstractFungalRADeployer implements Deploy
 
       finally
       {
+         cleanTemporaryFiles(url);
          SecurityActions.setThreadContextClassLoader(oldTCCL);
       }
+   }
+   
+   /**
+    * Get File object of URL who locate a rar resource
+    * @param url
+    * @return a File object pointing of rar resources
+    */
+   protected File getFileFromUrl(URL url) throws URISyntaxException, IOException{
+     return new File(url.toURI());
+   }
+   
+   /**
+    * Get IronJacamar Home directory
+    * @return a String object
+    */
+   protected String getIronJacamarHome(){
+     return SecurityActions.getSystemProperty("iron.jacamar.home");
+   }
+   
+   /**
+    * Clean all potential temporary files
+    * @param url
+    */
+   protected void cleanTemporaryFiles(URL url) throws DeployException{
    }
 
    /**
